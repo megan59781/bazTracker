@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
+import 'package:flutter/foundation.dart';
 
-void main() {
-  runApp(const MyApp());
+void main() async {
+  Socket sock = await Socket.connect('192.168.5.207', 80);
+  runApp(MyApp(channel: sock));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final Socket channel; 
+
+  MyApp({required this.channel});
 
   @override
   Widget build(BuildContext context) {
@@ -13,23 +18,36 @@ class MyApp extends StatelessWidget {
       title: 'Flutter Demo',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-        useMaterial3: true,
+        //useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: MyHomePage(title: 'Flutter Demo Home Page', channel: channel),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
+  final Socket channel;
   final String title;
 
+  MyHomePage({Key? key, required this.title, required this.channel}) : super(key: key);
+  
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+
+  void _togglePower() {
+    widget.channel.write('POWER\n');
+  }
+
+  @override
+  void dispose() {
+    widget.channel.close();
+    super.dispose();
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -37,11 +55,15 @@ class _MyHomePageState extends State<MyHomePage> {
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
           title: Text(widget.title),
         ),
-        body: const Center(
+        body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
               Text("test"),
+              ElevatedButton(
+                onPressed: _togglePower,
+                child: Text('Button'),
+              )
             ],
           ),
         ));
