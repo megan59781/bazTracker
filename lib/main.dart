@@ -7,14 +7,11 @@ import 'firebase_options.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // Initialize Flutter binding
   await Firebase.initializeApp();
-  Socket sock = await Socket.connect('192.168.5.207', 80);
-  runApp(MyApp(channel: sock));
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  final Socket channel;
-
-  MyApp({required this.channel});
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -25,17 +22,15 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         //useMaterial3: true,
       ),
-      home: MyHomePage(title: 'Flutter Demo Home Page', channel: channel),
+      home: const MyHomePage(title: 'Flutter Water Sensor'),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  final Socket channel;
   final String title;
 
-  MyHomePage({Key? key, required this.title, required this.channel})
-      : super(key: key);
+  const MyHomePage({Key? key, required this.title}) : super(key: key);
 
   @override
   State<MyHomePage> createState() => _MyHomePageState();
@@ -43,30 +38,39 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   DatabaseReference dbhandler = FirebaseDatabase.instance.ref();
+  String water = "Water Sensor";
 
-  void _togglePower() async {
-    widget.channel.write('POWER');
-    print('Sent POWER command to Arduino.');
+  // function gets current water from database
+  Future<void> currentWater() async {
+    dbhandler.child('Water Sensor').onValue.listen((DatabaseEvent event) async {
+      if (event.snapshot.value != null) {
+        Map<dynamic, dynamic>? data =
+            event.snapshot.value as Map<dynamic, dynamic>?;
+
+        if (data != null) {
+          int currentVal = data['current_val'];
+          print("Current water value: $currentVal");
+          String value = currentVal.toString();
+          setState(() {
+            water = "Current Water: $value";
+          });
+        }
+      }
+    });
   }
 
-  // test write to db
-  Future<void> addDb(String power) async {
-    Map<String, dynamic> testL = {
-      "pressed": power,
-    };
-    try {
-      await dbhandler.child("Test").push().set(testL);
-      print("Data added successfully!");
-    } catch (e) {
-      print("Error adding data to Firebase: $e");
-    }
-  }
-
-  @override
-  void dispose() {
-    widget.channel.close();
-    super.dispose();
-  }
+  // // test write to db
+  // Future<void> addDb(String power) async {
+  //   Map<String, dynamic> testL = {
+  //     "pressed": power,
+  //   };
+  //   try {
+  //     await dbhandler.child("Test").push().set(testL);
+  //     print("Data added successfully!");
+  //   } catch (e) {
+  //     print("Error adding data to Firebase: $e");
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -79,12 +83,12 @@ class _MyHomePageState extends State<MyHomePage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: <Widget>[
-              Text("test"),
+              Text(water),
               ElevatedButton(
                 onPressed: () {
-                _togglePower(); // Call _togglePower function correctly
-              },
-                child: Text('Button'),
+                  currentWater(); // Call _togglePower function correctly
+                },
+                child: Text('Water Check'),
               )
             ],
           ),
