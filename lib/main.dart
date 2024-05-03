@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized(); // Initialize Flutter binding
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp();
   Socket sock = await Socket.connect('192.168.5.207', 80);
   runApp(MyApp(channel: sock));
 }
@@ -21,7 +19,8 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Baz Tracker',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         //useMaterial3: true,
@@ -43,8 +42,24 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  void _togglePower() {
-    widget.channel.write('POWER\n');
+  DatabaseReference dbhandler = FirebaseDatabase.instance.ref();
+
+  void _togglePower() async {
+    widget.channel.write('POWER');
+    print('Sent POWER command to Arduino.');
+  }
+
+  // test write to db
+  Future<void> addDb(String power) async {
+    Map<String, dynamic> testL = {
+      "pressed": power,
+    };
+    try {
+      await dbhandler.child("Test").push().set(testL);
+      print("Data added successfully!");
+    } catch (e) {
+      print("Error adding data to Firebase: $e");
+    }
   }
 
   @override
@@ -66,7 +81,9 @@ class _MyHomePageState extends State<MyHomePage> {
             children: <Widget>[
               Text("test"),
               ElevatedButton(
-                onPressed: _togglePower,
+                onPressed: () {
+                _togglePower(); // Call _togglePower function correctly
+              },
                 child: Text('Button'),
               )
             ],
