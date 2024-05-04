@@ -14,8 +14,8 @@ int pos = 10;
 void setup() {
   Serial.begin(9600);
 
-  myservo.attach(9);
-  myservo.write(0);
+  myservo.attach(7);
+  myservo.write(300);
 
   nodemcu.begin(9600);
   delay(1000);
@@ -36,16 +36,20 @@ void loop() {
   Serial.println("-----------------------------------------");
 
   if (motor == 1){
-    for (pos = 0; pos <= 180; pos++) {
+    for (pos = 0; pos <= 50; pos++) {
     myservo.write(pos);  // Set the position of the servo
-    delay(10);         // Wait for 10ms for the servo to process the command
+    delay(2);         // Wait for 10ms for the servo to process the command
+    }
+    for (pos = 50; pos >= 0; pos--) {
+      myservo.write(pos);  // Set the position of the servo
+      delay(2);         // Wait for 10ms for the servo to process the command
     }
 
-  // Make the pos variabele go from 180 to 0
-    for (pos = 180; pos >= 0; pos--) {
-      myservo.write(pos);  // Set the position of the servo
-      delay(10);         // Wait for 10ms for the servo to process the command
-    }
+    myservo.write(300);
+
+
+  //Make the pos variabele go from 180 to 0
+    
   }
   delay(5);
 
