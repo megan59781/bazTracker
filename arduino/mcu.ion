@@ -79,6 +79,9 @@ void loop(){
   StaticJsonBuffer<1000> jsonBuffer;
   JsonObject& data = jsonBuffer.parseObject(nodemcu);
 
+  //StaticJsonBuffer<1000> jsonBuffer;
+  JsonObject& dataSend = jsonBuffer.createObject();
+
   if (data == JsonObject::invalid()) {
     //Serial.println("Invalid Json Object");
     jsonBuffer.clear();
@@ -102,8 +105,6 @@ void loop(){
     Serial.println("\nConnected to Wi-Fi with IP: " + WiFi.localIP().toString());
   }
 
-  // int sensorValue = analogRead(WATER_SENSOR_PIN);
-
   if (Firebase.ready() && signupOK && (millis() - sendDataPrevMillis > 60000 || sendDataPrevMillis == 0)){
     sendDataPrevMillis = millis();
     // Write an Int number on the database path test/int
@@ -115,6 +116,22 @@ void loop(){
     else {
       Serial.println("FAILED");
       Serial.println("REASON: " + fbdo.errorReason());
+    }
+  }
+
+  if (Firebase.ready() && signupOK) {
+    // Check for motor set to 1 in Firebase
+    if (Firebase.RTDB.getInt(&fbdo, "MotorControl/motor_set") && fbdo.intData() == 1) {
+      dataSend["motor_on"] = 1;
+      dataSend.printTo(nodemcu);
+      jsonBuffer.clear();
+      nodemcu.println("Motor ON");  // Send message to Arduino
+
+      if (Firebase.RTDB.setInt(&fbdo, "MotorControl/motor_set", 0)) {
+        Serial.println("Motor status updated to 0 in Firebase");
+      } else {
+        Serial.println("Failed to update motor status in Firebase");
+      }
     }
   }
 

@@ -1,15 +1,21 @@
-//Arduino to NodeMCU Lib
 #include <SoftwareSerial.h>
 #include <ArduinoJson.h>
+#include <Servo.h>
 
 //Initialise Arduino to NodeMCU (5=Rx & 6=Tx)
 SoftwareSerial nodemcu(5, 6);
 
 #define WATER_SENSOR_PIN A5
 
+Servo myservo;
+
+int pos = 10;
 
 void setup() {
   Serial.begin(9600);
+
+  myservo.attach(9);
+  myservo.write(0);
 
   nodemcu.begin(9600);
   delay(1000);
@@ -21,6 +27,27 @@ void loop() {
 
   StaticJsonBuffer<1000> jsonBuffer;
   JsonObject& data = jsonBuffer.createObject();
+
+  JsonObject& dataGet = jsonBuffer.parseObject(nodemcu);
+  Serial.println("JSON Object Recieved");
+  Serial.print("Recieved current_motor:  ");
+  int motor = dataGet["motor_on"];
+  Serial.println(motor);
+  Serial.println("-----------------------------------------");
+
+  if (motor == 1){
+    for (pos = 0; pos <= 180; pos++) {
+    myservo.write(pos);  // Set the position of the servo
+    delay(10);         // Wait for 10ms for the servo to process the command
+    }
+
+  // Make the pos variabele go from 180 to 0
+    for (pos = 180; pos >= 0; pos--) {
+      myservo.write(pos);  // Set the position of the servo
+      delay(10);         // Wait for 10ms for the servo to process the command
+    }
+  }
+  delay(5);
 
   int water = analogRead(WATER_SENSOR_PIN);
 
