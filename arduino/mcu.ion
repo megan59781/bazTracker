@@ -4,14 +4,17 @@
 #endif
 #include <Firebase_ESP_Client.h>
 
+#include <SoftwareSerial.h>
+#include <ArduinoJson.h>
+
 //Provide the token generation process info.
 #include "addons/TokenHelper.h"
 //Provide the RTDB payload printing info and other helper functions.
 #include "addons/RTDBHelper.h"
 
 // Insert your network credentials
-#define WIFI_SSID "5G COVID mast"
-#define WIFI_PASSWORD "earht307"
+#define WIFI_SSID "INSIGHT2"
+#define WIFI_PASSWORD "aabbccddee"
 
 // Insert Firebase project API Key
 #define API_KEY "AIzaSyAbqWFBG9yTQPWTazHVNXU32C3F3XKgXgk"
@@ -19,7 +22,10 @@
 // Insert RTDB URLefine the RTDB URL */
 #define DATABASE_URL "https://baztracker-default-rtdb.europe-west1.firebasedatabase.app"
 
-#define WATER_SENSOR_PIN A0  // Analog pin where water sensor is connected
+//D6 = Rx & D5 = Tx
+SoftwareSerial nodemcu(D6, D5);
+
+// #define WATER_SENSOR_PIN A0  // Analog pin where water sensor is connected
 
 //Define Firebase Data object
 FirebaseData fbdo;
@@ -33,6 +39,9 @@ bool signupOK = false;
 
 void setup(){
   Serial.begin(9600);
+  nodemcu.begin(9600);
+  while (!Serial) continue;
+
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.print("Connecting to Wi-Fi");
   while (WiFi.status() != WL_CONNECTED){
@@ -67,6 +76,21 @@ void setup(){
 }
 
 void loop(){
+  StaticJsonBuffer<1000> jsonBuffer;
+  JsonObject& data = jsonBuffer.parseObject(nodemcu);
+
+  if (data == JsonObject::invalid()) {
+    //Serial.println("Invalid Json Object");
+    jsonBuffer.clear();
+    return;
+  }
+
+  Serial.println("JSON Object Recieved");
+  Serial.print("Recieved current_water_val:  ");
+  int water = data["current_water_val"];
+  Serial.println(water);
+  Serial.println("-----------------------------------------");
+
   if (WiFi.status() != WL_CONNECTED) {
     // Reconnect to Wi-Fi if not connected
     Serial.println("Connecting to Wi-Fi...");
@@ -78,12 +102,12 @@ void loop(){
     Serial.println("\nConnected to Wi-Fi with IP: " + WiFi.localIP().toString());
   }
 
-  int sensorValue = analogRead(WATER_SENSOR_PIN);
-  
-  if (Firebase.ready() && signupOK && (millis() - sendDataPrevMillis > 15000 || sendDataPrevMillis == 0)){
+  // int sensorValue = analogRead(WATER_SENSOR_PIN);
+
+  if (Firebase.ready() && signupOK && (millis() - sendDataPrevMillis > 60000 || sendDataPrevMillis == 0)){
     sendDataPrevMillis = millis();
     // Write an Int number on the database path test/int
-    if (Firebase.RTDB.setInt(&fbdo, "Water Sensor/current_val", sensorValue)){
+    if (Firebase.RTDB.setInt(&fbdo, "Water Sensor/current_val", water)){
       Serial.println("PASSED");
       Serial.println("PATH: " + fbdo.dataPath());
       Serial.println("TYPE: " + fbdo.dataType());
