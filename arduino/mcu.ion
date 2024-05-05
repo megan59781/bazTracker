@@ -13,8 +13,8 @@
 #include "addons/RTDBHelper.h"
 
 // Insert your network credentials
-#define WIFI_SSID "INSIGHT2"
-#define WIFI_PASSWORD "aabbccddee"
+#define WIFI_SSID "5G COVID mast"
+#define WIFI_PASSWORD "earht307"
 
 // Insert Firebase project API Key
 #define API_KEY "AIzaSyAbqWFBG9yTQPWTazHVNXU32C3F3XKgXgk"
@@ -40,7 +40,6 @@ bool signupOK = false;
 void setup(){
   Serial.begin(9600);
   nodemcu.begin(9600);
-  while (!Serial) continue;
 
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   Serial.print("Connecting to Wi-Fi");
@@ -76,6 +75,18 @@ void setup(){
 }
 
 void loop(){
+  if (WiFi.status() != WL_CONNECTED) {
+    // Reconnect to Wi-Fi if not connected
+    Serial.println("Connecting to Wi-Fi...");
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    while (WiFi.status() != WL_CONNECTED) {
+      Serial.print(".");
+      delay(500);
+    }
+    Serial.println("\nConnected to Wi-Fi with IP: " + WiFi.localIP().toString());
+  }
+
+
   StaticJsonBuffer<1000> jsonBuffer;
   JsonObject& data = jsonBuffer.parseObject(nodemcu);
 
@@ -91,18 +102,38 @@ void loop(){
   Serial.println("JSON Object Recieved");
   Serial.print("Recieved current_water_val:  ");
   int water = data["current_water_val"];
+  String wTime = data["water_time"];
+  String wDate = data["water_date"];
   Serial.println(water);
+  Serial.println(wTime);
+  Serial.println(wDate);
   Serial.println("-----------------------------------------");
 
-  if (WiFi.status() != WL_CONNECTED) {
-    // Reconnect to Wi-Fi if not connected
-    Serial.println("Connecting to Wi-Fi...");
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-    while (WiFi.status() != WL_CONNECTED) {
-      Serial.print(".");
-      delay(500);
-    }
-    Serial.println("\nConnected to Wi-Fi with IP: " + WiFi.localIP().toString());
+  Serial.print("Recieved dog_present:  ");
+  String dog = data["dog_present"];
+  String dogTime = data["dog_time"];
+  String dogDate = data["dog_date"];
+  Serial.println(dog);
+  Serial.println(dogTime);
+  Serial.println(dogDate);
+  Serial.println("-----------------------------------------");
+
+  if (dog == "Barry") {
+      if (Firebase.RTDB.setString(&fbdo, "Dog Track/dog_present", dog)) {
+        Serial.println("Motor status updated to 0 in Firebase");
+      } else {
+        Serial.println("Failed to update motor status in Firebase");
+      }
+      if (Firebase.RTDB.setString(&fbdo, "Dog Track/dog_date", dogDate)) {
+        Serial.println("Motor status updated to 0 in Firebase");
+      } else {
+        Serial.println("Failed to update motor status in Firebase");
+      }
+      if (Firebase.RTDB.setString(&fbdo, "Dog Track/dog_time", dogTime)) {
+        Serial.println("Motor status updated to 0 in Firebase");
+      } else {
+        Serial.println("Failed to update motor status in Firebase");
+      }
   }
 
   if (Firebase.ready() && signupOK && (millis() - sendDataPrevMillis > 60000 || sendDataPrevMillis == 0)){
@@ -112,22 +143,31 @@ void loop(){
       Serial.println("PASSED");
       Serial.println("PATH: " + fbdo.dataPath());
       Serial.println("TYPE: " + fbdo.dataType());
-    }
-    else {
+    } else {
       Serial.println("FAILED");
       Serial.println("REASON: " + fbdo.errorReason());
+    }
+    if (Firebase.RTDB.setString(&fbdo, "Water Sensor/water_date", wDate)) {
+      Serial.println("Motor status updated to 0 in Firebase");
+    } else {
+      Serial.println("Failed to update motor status in Firebase");
+    }
+    if (Firebase.RTDB.setString(&fbdo, "Water Sensor/water_time", wTime)) {
+      Serial.println("Motor status updated to 0 in Firebase");
+    } else {
+      Serial.println("Failed to update motor status in Firebase");
     }
   }
 
   if (Firebase.ready() && signupOK) {
     // Check for motor set to 1 in Firebase
-    if (Firebase.RTDB.getInt(&fbdo, "MotorControl/motor_set") && fbdo.intData() == 1) {
+    if (Firebase.RTDB.getInt(&fbdo, "Treat/button_on") && fbdo.intData() == 1) {
       dataSend["motor_on"] = 1;
       dataSend.printTo(nodemcu);
       jsonBuffer.clear();
       nodemcu.println("Motor ON");  // Send message to Arduino
 
-      if (Firebase.RTDB.setInt(&fbdo, "MotorControl/motor_set", 0)) {
+      if (Firebase.RTDB.setInt(&fbdo, "Treat/button_on", 0)) {
         Serial.println("Motor status updated to 0 in Firebase");
       } else {
         Serial.println("Failed to update motor status in Firebase");

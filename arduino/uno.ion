@@ -1,0 +1,122 @@
+#include <SoftwareSerial.h>
+#include <ArduinoJson.h>
+#include <Servo.h>
+#include <SPI.h>
+#include <MFRC522.h>
+#include <RTClib.h>
+
+//Initialise Arduino to NodeMCU (5=Rx & 6=Tx)
+SoftwareSerial nodemcu(5, 6);
+
+#define WATER_SENSOR_PIN A0
+
+#define SS_PIN 10
+#define RST_PIN 9
+
+#define MAIN_TAG "27 34 D2 2D"
+
+Servo myservo;
+
+RTC_DS1307 rtc;
+
+int pos = 0;
+
+// byte readCard[4];
+// String bazTag = "2734D22D";
+// String tagID = "";
+// MFRC522 mfrc522(SS_PIN, RST_PIN);
+
+void setup() {
+  Serial.begin(9600);
+
+  // SETUP RTC MODULE
+  if (! rtc.begin()) {
+    Serial.println("Couldn't find RTC");
+    Serial.flush();
+    while (1);
+  }
+
+  //rtc.adjust(DateTime(2024, 5, 5, 16, 17, 0));
+
+  rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+
+  myservo.attach(7);
+  myservo.write(300);
+
+  nodemcu.begin(9600);
+  SPI.begin();
+  delay(1000);
+
+  //mfrc522.PCD_Init();
+  delay(5);
+  //Show details of PCD - MFRC522 Card Reader
+  //mfrc522.PCD_DumpVersionToSerial();
+  Serial.println("Program started");
+}
+
+
+void loop() {
+  StaticJsonBuffer<1000> jsonBuffer;
+  JsonObject& data = jsonBuffer.createObject();
+  JsonObject& dataGet = jsonBuffer.parseObject(nodemcu);
+  
+  char time[10];
+  char date[10];
+  DateTime now = rtc.now();
+  sprintf(time, "%02d:%02d:%02d",  now.hour(), now.minute(), now.second()); 
+  sprintf(date, "%02d/%02d/%02d",  now.day(), now.month(), now.year()); 
+  //Serial.println(time);
+  delay(10);
+  
+  int motor = dataGet["motor_on"];
+
+  // if (mfrc522.PICC_IsNewCardPresent()) {
+  //   Serial.println("detect");
+  //   //if (compareTags(mfrc522.uid.uidByte, mfrc522.uid.size, MAIN_TAG)) {
+  //   Serial.println("baz here");
+  //   data["dog_present"] = "Barry";
+  //   data["dog_time"] = time;
+  //   data["dog_date"] = date;
+  //   //Send data to NodeMCU
+  //   data.printTo(nodemcu);
+  //   jsonBuffer.clear();
+
+  //     // } else {
+  //     //   Serial.println("Access denied!");
+  //     //}
+  //   mfrc522.PICC_HaltA(); // Halt PICC
+  // }
+
+  if (motor == 1){
+    for (pos = 0; pos <= 50; pos++) {
+    myservo.write(pos);  // Set the position of the servo
+    delay(2);         // Wait for 10ms for the servo to process the command
+    }
+    for (pos = 50; pos >= 0; pos--) {
+      myservo.write(pos);  // Set the position of the servo
+      delay(2);         // Wait for 10ms for the servo to process the command
+    }
+    myservo.write(300);
+  }
+  delay(5);
+
+  int water = analogRead(WATER_SENSOR_PIN);
+  //Assign collected data to JSON Object
+  data["water_time"] = time;
+  data["water_date"] = date;
+  data["current_water_val"] = water;
+  //Send data to NodeMCU
+  data.printTo(nodemcu);
+  jsonBuffer.clear();
+
+  delay(2000);
+}
+
+// bool compareTags(byte tagData[], byte dataSize, const char* compareTag) {
+//   String tagStr = "";
+//   for (byte i = 0; i < dataSize; i++) {
+//     tagStr += String(tagData[i], HEX);
+//     if (i < dataSize - 1) tagStr += " ";
+//   }
+//   return (tagStr == compareTag);
+// }
