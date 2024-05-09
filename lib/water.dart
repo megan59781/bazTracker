@@ -2,7 +2,7 @@ import 'package:firebase_database/firebase_database.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
-import 'package:uuid/uuid.dart';
+//import 'package:uuid/uuid.dart';
 
 class Water extends StatefulWidget {
   const Water({super.key});
@@ -15,33 +15,56 @@ class WaterState extends State<Water> {
   // Firebase Authentication and Google Sign In to sign out
   DatabaseReference dbhandler = FirebaseDatabase.instance.ref();
   int startLevel = 0;
-  String startTime = "12:00";
   int waterLevel = 0;
   int waterGoal = 800;
-  int waterDrank = 740;
-  String lastDrank = "21:48";
+  int waterDrank = 65;
+  String lastDrank = " ";
   int activityLevel = 50;
   int dogWeight = 14;
+  String status = " ";
+  int waterVol = 0;
 
   @override
   void initState() {
     super.initState();
     currentWater();
-    waterSet(DateTime.now(), TimeOfDay.now());
+    waterSet();
+  }
+
+  void updateValues(){
+
   }
 
   Future<void> currentWater() async {
+    DateTime today = DateTime.now();
     dbhandler.child('Water Sensor').onValue.listen((DatabaseEvent event) async {
       if (event.snapshot.value != null) {
         Map<dynamic, dynamic>? data =
             event.snapshot.value as Map<dynamic, dynamic>?;
-
         if (data != null) {
           int currentVal = data['current_val'];
-          // String time = data['water_time'];
+          String time = data['water_time'];
           // String date = data['water_date'];
           setState(() {
+            if (currentVal < waterLevel) {
+              int drank = waterLevel - currentVal;
+              int drankMl = (drank * 3.927).toInt();
+              waterDrank += drankMl;
+              lastDrank = time;
+            }
+            if (currentVal <= 20) {
+              status = "Low";
+            } else {
+              status = "Good";
+            }
             waterLevel = currentVal;
+            waterVol = (currentVal * 3.927).toInt();
+          });
+          await dbhandler.child('Water Track').update({
+            "track_date": DateFormat('dd-MM-yyyy').format(today),
+            "last_drank": time,
+            "current_drank": waterDrank,
+            "current_vol": waterVol
           });
         }
       }
@@ -55,7 +78,8 @@ class WaterState extends State<Water> {
         date.day == now.day;
   }
 
-  Future<void> waterSet(DateTime date, TimeOfDay time) async {
+  Future<void> waterSet() async {
+    DateTime today = DateTime.now();
     dbhandler
         .child('Water Track')
         .onValue
@@ -65,58 +89,19 @@ class WaterState extends State<Water> {
         Map<dynamic, dynamic>? data =
             event.snapshot.value as Map<dynamic, dynamic>?;
         if (data != null) {
-          data.forEach((key, value) {
-            String dateString = value['date'];
-            DateTime date = DateFormat('dd-MM-yyyy').parse(dateString);
-            if (isToday(date)) {
-              // TBD
-            } else {
-              dbhandler.child("Water Track").child(key).remove();
-            }
-          });
-        }
-      } else {
-        dbhandler
-            .child('Water Sensor')
-            .onValue
-            .listen((DatabaseEvent event) async {
-          if (event.snapshot.value != null) {
-            Map<dynamic, dynamic>? data =
-                event.snapshot.value as Map<dynamic, dynamic>?;
-
-            if (data != null) {
-              int currentVal = data['current_val'];
-              String time = data['water_time'];
-              String date = data['water_date'];
-              await addWaterChange(date, time, currentVal, 0);
-              setState(() {
-                startLevel = currentVal;
-                startTime = time;
-                waterLevel = currentVal;
-                waterDrank = 0;
-              });
-            }
+          String dateString = data['track_date'];
+          DateTime date = DateFormat('dd-MM-yyyy').parse(dateString);
+          if (!isToday(date)) {
+            await dbhandler.child('Water Track').update({
+              "current_drank": 0,
+              "track_date": DateFormat('dd-MM-yyyy').format(today),
+              "last_drank": TimeOfDay.now().format(context),
+              "current_vol": 0,
+            });
           }
-        });
+        }
       }
     });
-  }
-
-  Future<void> addWaterChange(
-      String date, String time, int waterLevel, int waterDrank) async {
-    String waterId = const Uuid().v4();
-    Map<String, dynamic> water = {
-      "id": waterId,
-      "date": date,
-      "time": time,
-      "current_level": waterLevel,
-      "current_drank": waterDrank,
-    };
-    try {
-      await dbhandler.child("Water Track").push().set(water);
-    } catch (error) {
-      print("Error saving to Firebase: $error");
-    }
   }
 
   // Future<void> addDogDetailsDb(int activity, int weight, int goal) async {
@@ -234,7 +219,6 @@ class WaterState extends State<Water> {
   Widget build(BuildContext context) {
     return Scaffold(
         backgroundColor: const Color(0xffFCFAFC),
-        
         body: Center(
             child: SingleChildScrollView(
           child: Column(
@@ -259,7 +243,8 @@ class WaterState extends State<Water> {
                     animationDuration: 1000,
                     radius: 90,
                     lineWidth: 20,
-                    percent: waterDrank / waterGoal,
+                    percent:
+                        waterDrank / waterGoal > 1 ? 1 : waterDrank / waterGoal,
                     progressColor: const Color(0xff01579B),
                     backgroundColor: const Color(0xff64b5f6),
                     circularStrokeCap: CircularStrokeCap.round,
@@ -334,33 +319,40 @@ class WaterState extends State<Water> {
                     color: Color(0xff01579B)),
               ),
               const SizedBox(height: 20),
-              const Row(
+              Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: <Widget>[
-                  IconButton(onPressed: null, icon: Icon(Icons.local_drink_outlined, size: 80, color: Color(0xff64b5f6))),
-                  SizedBox(width: 20),
+                  const IconButton(
+                      onPressed: null,
+                      icon: Icon(Icons.local_drink_outlined,
+                          size: 80, color: Color(0xff64b5f6))),
+                  const SizedBox(width: 20),
                   Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                  Text(
-                    "Bowl Water Level",
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.right,
-                  ),
-                  SizedBox(height: 5),
-                  Text(
-                    "113ml",
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.right,
-                  ),
-                  SizedBox(height: 5),
-                  Text(
-                    "Satus: Ok",
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.right,
-                  )]),
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        const Text(
+                          "Bowl Water Level",
+                          style: TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.right,
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          "${waterVol}ml",
+                          style: const TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.right,
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          "Satus: $status",
+                          style: const TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.right,
+                        )
+                      ]),
                 ],
               ),
               const SizedBox(height: 80),
