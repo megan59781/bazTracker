@@ -64,4 +64,4 @@ class BazNavigationBarState extends State<BazNavigationBar> {
       ),
     );
   }
-}
+} 

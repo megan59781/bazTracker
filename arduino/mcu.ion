@@ -7,7 +7,7 @@
 #include <SoftwareSerial.h>
 #include <ArduinoJson.h>
 
-//Provide the token generation process info.
+// Provide the token generation process info.
 #include "addons/TokenHelper.h"
 //Provide the RTDB payload printing info and other helper functions.
 #include "addons/RTDBHelper.h"
@@ -22,17 +22,16 @@
 // Insert RTDB URLefine the RTDB URL */
 #define DATABASE_URL "https://baztracker-default-rtdb.europe-west1.firebasedatabase.app"
 
-//D6 = Rx & D5 = Tx
+// D6 = Rx & D5 = Tx
 SoftwareSerial nodemcu(D6, D5);
 
-// #define WATER_SENSOR_PIN A0  // Analog pin where water sensor is connected
-
-//Define Firebase Data object
+// Define Firebase Data object
 FirebaseData fbdo;
 
 FirebaseAuth auth;
 FirebaseConfig config;
 
+// Varibles for db load time
 unsigned long sendDataPrevMillis = 0;
 int count = 0;
 bool signupOK = false;
@@ -52,13 +51,10 @@ void setup(){
   Serial.println(WiFi.localIP());
   Serial.println();
 
-  /* Assign the api key (required) */
   config.api_key = API_KEY;
-
-  /* Assign the RTDB URL (required) */
   config.database_url = DATABASE_URL;
 
-  /* Sign up */
+  // Sign up function to connect to firebase
   if (Firebase.signUp(&config, &auth, "", "")){
     Serial.println("ok");
     signupOK = true;
@@ -67,8 +63,8 @@ void setup(){
     Serial.printf("%s\n", config.signer.signupError.message.c_str());
   }
 
-  /* Assign the callback function for the long running token generation task */
-  config.token_status_callback = tokenStatusCallback; //see addons/TokenHelper.h
+  // Assign the callback function for the long running token generation task
+  config.token_status_callback = tokenStatusCallback;
   
   Firebase.begin(&config, &auth);
   Firebase.reconnectWiFi(true);
@@ -76,7 +72,7 @@ void setup(){
 
 void loop(){
   if (WiFi.status() != WL_CONNECTED) {
-    // Reconnect to Wi-Fi if not connected
+    // Display reconnect to Wi-Fi if not connected
     Serial.println("Connecting to Wi-Fi...");
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
     while (WiFi.status() != WL_CONNECTED) {
@@ -86,7 +82,7 @@ void loop(){
     Serial.println("\nConnected to Wi-Fi with IP: " + WiFi.localIP().toString());
   }
 
-
+  // Set Json Object
   StaticJsonBuffer<1000> jsonBuffer;
   JsonObject& data = jsonBuffer.parseObject(nodemcu);
 
@@ -99,66 +95,63 @@ void loop(){
     return;
   }
 
-  Serial.println("JSON Object Recieved");
-  Serial.print("Recieved current_water_val:  ");
+  // Water level and time and dates from Ard
   int water = data["current_water_val"];
   String wTime = data["water_time"];
   String wDate = data["water_date"];
-  Serial.println(water);
-  Serial.println(wTime);
-  Serial.println(wDate);
-  Serial.println("-----------------------------------------");
 
-  Serial.print("Recieved dog_present:  ");
+  // Motion and which dog detceted from Ard
   String dog = data["dog_present"];
   String dogTime = data["dog_time"];
   String dogDate = data["dog_date"];
-  Serial.println(dog);
-  Serial.println(dogTime);
-  Serial.println(dogDate);
-  Serial.println("-----------------------------------------");
 
+  // Add Barry record to firebase
   if (dog == "Barry") {
       if (Firebase.RTDB.setString(&fbdo, "Dog Track/dog_present", dog)) {
-        Serial.println("Motor status updated to 0 in Firebase");
+        Serial.println("Success");
       } else {
-        Serial.println("Failed to update motor status in Firebase");
+        Serial.println("FAILED");
+        Serial.println("REASON: " + fbdo.errorReason());
       }
       if (Firebase.RTDB.setString(&fbdo, "Dog Track/dog_date", dogDate)) {
-        Serial.println("Motor status updated to 0 in Firebase");
+        Serial.println("Success");
       } else {
-        Serial.println("Failed to update motor status in Firebase");
+        Serial.println("FAILED");
+        Serial.println("REASON: " + fbdo.errorReason());
       }
       if (Firebase.RTDB.setString(&fbdo, "Dog Track/dog_time", dogTime)) {
-        Serial.println("Motor status updated to 0 in Firebase");
+        Serial.println("Success");
       } else {
-        Serial.println("Failed to update motor status in Firebase");
+        Serial.println("FAILED");
+        Serial.println("REASON: " + fbdo.errorReason());
       }
   }
 
+  // Every minuite add water, time and date to Firebase
   if (Firebase.ready() && signupOK && (millis() - sendDataPrevMillis > 60000 || sendDataPrevMillis == 0)){
     sendDataPrevMillis = millis();
     // Write an Int number on the database path test/int
     if (Firebase.RTDB.setInt(&fbdo, "Water Sensor/current_val", water)){
-      Serial.println("PASSED");
-      Serial.println("PATH: " + fbdo.dataPath());
-      Serial.println("TYPE: " + fbdo.dataType());
+      Serial.println("Success");
     } else {
       Serial.println("FAILED");
       Serial.println("REASON: " + fbdo.errorReason());
     }
     if (Firebase.RTDB.setString(&fbdo, "Water Sensor/water_date", wDate)) {
-      Serial.println("Motor status updated to 0 in Firebase");
+      Serial.println("Success");
     } else {
-      Serial.println("Failed to update motor status in Firebase");
+      Serial.println("FAILED");
+      Serial.println("REASON: " + fbdo.errorReason());
     }
     if (Firebase.RTDB.setString(&fbdo, "Water Sensor/water_time", wTime)) {
-      Serial.println("Motor status updated to 0 in Firebase");
+      Serial.println("Success");
     } else {
-      Serial.println("Failed to update motor status in Firebase");
+      Serial.println("FAILED");
+      Serial.println("REASON: " + fbdo.errorReason());
     }
   }
 
+  // check motor updates in firebase
   if (Firebase.ready() && signupOK) {
     // Check for motor set to 1 in Firebase
     if (Firebase.RTDB.getInt(&fbdo, "Treat/button_on") && fbdo.intData() == 1) {
@@ -171,6 +164,7 @@ void loop(){
         Serial.println("Motor status updated to 0 in Firebase");
       } else {
         Serial.println("Failed to update motor status in Firebase");
+        Serial.println("REASON: " + fbdo.errorReason());
       }
     }
   }
