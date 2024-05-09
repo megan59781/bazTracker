@@ -12,7 +12,6 @@ class Water extends StatefulWidget {
 }
 
 class WaterState extends State<Water> {
-  // Firebase Authentication and Google Sign In to sign out
   DatabaseReference dbhandler = FirebaseDatabase.instance.ref();
   int startLevel = 0;
   int waterLevel = 0;
@@ -24,6 +23,7 @@ class WaterState extends State<Water> {
   String status = " ";
   int waterVol = 0;
 
+  // when page loads get the current water level
   @override
   void initState() {
     super.initState();
@@ -31,10 +31,7 @@ class WaterState extends State<Water> {
     waterSet();
   }
 
-  void updateValues(){
-
-  }
-
+  // get the current water level and update other vaibles if needed
   Future<void> currentWater() async {
     DateTime today = DateTime.now();
     dbhandler.child('Water Sensor').onValue.listen((DatabaseEvent event) async {
@@ -71,6 +68,7 @@ class WaterState extends State<Water> {
     });
   }
 
+  // check if the date is today
   bool isToday(DateTime date) {
     DateTime now = DateTime.now();
     return date.year == now.year &&
@@ -78,6 +76,7 @@ class WaterState extends State<Water> {
         date.day == now.day;
   }
 
+  // set the water values for the day at start
   Future<void> waterSet() async {
     DateTime today = DateTime.now();
     dbhandler
@@ -104,30 +103,7 @@ class WaterState extends State<Water> {
     });
   }
 
-  // Future<void> addDogDetailsDb(int activity, int weight, int goal) async {
-  //   dbhandler.child('Dog Details').onValue.take(1).listen((event) async {
-  //     if (event.snapshot.value != null) {
-  //       Map<dynamic, dynamic>? data =
-  //           event.snapshot.value as Map<dynamic, dynamic>?;
-  //       if (data != null) {
-  //         await dbhandler.child("Dog Details").update({
-  //           "dog_activity": activity,
-  //           "dog_weight": weight,
-  //           "dog_goal": goal
-  //         });
-  //       }
-  //     } else {
-  //       // if no abilities added yet add new with worker_id
-  //       Map<String, dynamic> dogList = {
-  //         "dog_activity": activity,
-  //         "dog_weight": weight,
-  //         "dog_goal": goal
-  //       };
-  //       await dbhandler.child('Dog Details').push().set(dogList);
-  //     }
-  //   });
-  // }
-
+  // pop-up set the dog activity level and weight
   void dogSettings(BuildContext context, Function(int, int, int) updateGoal) {
     TextEditingController _controller = TextEditingController();
     showDialog<void>(

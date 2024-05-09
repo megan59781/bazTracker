@@ -12,19 +12,19 @@ class Treats extends StatefulWidget {
 }
 
 class TreatsState extends State<Treats> {
-  // Firebase Authentication and Google Sign In to sign out
   DatabaseReference dbhandler = FirebaseDatabase.instance.ref();
   List<Map<String, dynamic>> treatList = [];
 
+   // Load treat records after the first frame is drawn
   @override
   void initState() {
     super.initState();
-    // Use addPostFrameCallback to wait until the first frame is drawn
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      loadTreatRecords(); // Load treat records after the first frame is drawn
+      loadTreatRecords();
     });
   }
 
+  // Add treat record to Firebase Realtime Database
   Future<void> addTreatDb(DateTime date, TimeOfDay time) async {
     String treatId = const Uuid().v4();
     String dateString = DateFormat('dd-MM-yyyy').format(date);
@@ -42,6 +42,7 @@ class TreatsState extends State<Treats> {
 
   DateTime today = DateTime.now();
 
+  // Load treat records from Firebase Realtime Database
   Future<void> loadTreatRecords() async {
     List<Map<String, dynamic>> tempList = [];
     dbhandler.child("Treat Track").onValue.listen((event) async {
@@ -72,6 +73,7 @@ class TreatsState extends State<Treats> {
     });
   }
 
+  // Check if the date is today
   bool isToday(DateTime date) {
     DateTime now = DateTime.now();
     return date.year == now.year &&
@@ -79,6 +81,7 @@ class TreatsState extends State<Treats> {
         date.day == now.day;
   }
 
+  // Fire treats change in Firebase Realtime Database button
   Future<void> fireTreat() async {
     dbhandler
         .child('Treat')

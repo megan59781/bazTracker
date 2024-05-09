@@ -10,19 +10,19 @@ class Motion extends StatefulWidget {
 }
 
 class MotionState extends State<Motion> {
-  // Firebase Authentication and Google Sign In to sign out
   DatabaseReference dbhandler = FirebaseDatabase.instance.ref();
   List<Map<String, dynamic>> motionList = [];
 
+  // Load records after the first frame is drawn
   @override
   void initState() {
     super.initState();
-    // Use addPostFrameCallback to wait until the first frame is drawn
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      loadRecords(); // Load treat records after the first frame is drawn
+      loadRecords();
     });
   }
 
+  // Check if the date is today
   bool isToday(DateTime date) {
     DateTime now = DateTime.now();
     return date.year == now.year &&
@@ -30,6 +30,7 @@ class MotionState extends State<Motion> {
         date.day == now.day;
   }
 
+  // Load motion records from Firebase Realtime Database
   Future<void> loadRecords() async {
     List<Map<String, dynamic>> tempList = [];
     dbhandler.child("Dog Track").onValue.listen((event) async {
@@ -43,23 +44,6 @@ class MotionState extends State<Motion> {
             'dog': data['dog_present'],
           };
           tempList.add(dogData);
-
-          // data.forEach((key, value) {
-          //   String dateString = value['dog_date'];
-          //   DateTime date = DateFormat('dd-MM-yyyy').parse(dateString);
-
-          //   if (isToday(date)) {
-          //     Map<String, dynamic> dogData = {
-          //       'time': value['dog_time'],
-          //       'date': value['dog_date'],
-          //       'dog': value['dog_present'],
-          //     };
-          //     tempList.add(dogData);
-          //   } else {
-          //     // Remove the treat record if it is not from today
-          //     //dbhandler.child("Dog Track").child(key).remove();
-          //   }
-          // });
         }
       }
       setState(() {
@@ -72,7 +56,6 @@ class MotionState extends State<Motion> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xffFCFAFC),
-      
       body: SingleChildScrollView(
         child: Center(
           child: Column(
