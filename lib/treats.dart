@@ -74,7 +74,9 @@ class TreatsState extends State<Treats> {
 
   bool isToday(DateTime date) {
     DateTime now = DateTime.now();
-    return date.year == now.year && date.month == now.month && date.day == now.day;
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
   }
 
   Future<void> fireTreat() async {
@@ -99,19 +101,19 @@ class TreatsState extends State<Treats> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xffFCFAFC),
-      appBar: AppBar(
-        backgroundColor: const Color(0xffFCFAFC),
-        title: const Padding(
-          padding: EdgeInsets.only(top: 10),
-          child: Center(child: Text("Treats")),
-        ),
-        automaticallyImplyLeading: false,
-      ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: <Widget>[
+            const SizedBox(height: 100), // Add some spacing below app bar
+              const Text(
+                "Today's Treats Given",
+                style: TextStyle(
+                    fontSize: 36,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xff01579B)),
+              ),
             Expanded(
               child: ListView.builder(
                 itemCount: treatList.length,
@@ -125,13 +127,17 @@ class TreatsState extends State<Treats> {
                       margin: const EdgeInsets.all(10),
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        border: Border.all(color: const Color.fromRGBO(0, 0, 0, 1)),
+                        border:
+                            Border.all(color: const Color.fromRGBO(0, 0, 0, 1)),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: ListTile(
-                        title: const Text("Treat Thrown", style: TextStyle(color: Colors.black, fontSize: 22)),
+                        title: const Text("Treat Thrown",
+                            style:
+                                TextStyle(color: Colors.black, fontSize: 22)),
                         subtitle: Text("Time Given: ${treat['time']}",
-                            style: const TextStyle(color: Colors.blue, fontSize: 15)),
+                            style: const TextStyle(
+                                color: Colors.blue, fontSize: 15)),
                       ),
                     ),
                   );

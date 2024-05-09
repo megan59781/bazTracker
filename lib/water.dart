@@ -14,22 +14,21 @@ class Water extends StatefulWidget {
 class WaterState extends State<Water> {
   // Firebase Authentication and Google Sign In to sign out
   DatabaseReference dbhandler = FirebaseDatabase.instance.ref();
-  String water = "Water Sensor";
   int startLevel = 0;
   String startTime = "12:00";
   int waterLevel = 0;
   int waterGoal = 800;
-  int iWaterDrank = 750;
-  String lastDrank = "12:00";
+  int waterDrank = 740;
+  String lastDrank = "21:48";
   int activityLevel = 50;
   int dogWeight = 14;
 
-  // @override
-  // void initState() {
-  //   super.initState();
-  //   currentWater();
-  //   waterSet(DateTime.now(), TimeOfDay.now());
-  // }
+  @override
+  void initState() {
+    super.initState();
+    currentWater();
+    waterSet(DateTime.now(), TimeOfDay.now());
+  }
 
   Future<void> currentWater() async {
     dbhandler.child('Water Sensor').onValue.listen((DatabaseEvent event) async {
@@ -57,18 +56,22 @@ class WaterState extends State<Water> {
   }
 
   Future<void> waterSet(DateTime date, TimeOfDay time) async {
-    dbhandler.child('Water Track').onValue.listen((DatabaseEvent event) async {
+    dbhandler
+        .child('Water Track')
+        .onValue
+        .take(1)
+        .listen((DatabaseEvent event) async {
       if (event.snapshot.value != null) {
         Map<dynamic, dynamic>? data =
             event.snapshot.value as Map<dynamic, dynamic>?;
         if (data != null) {
           data.forEach((key, value) {
             String dateString = value['date'];
-            DateTime date = DateFormat('dd/mm/yyyy').parse(dateString);
+            DateTime date = DateFormat('dd-MM-yyyy').parse(dateString);
             if (isToday(date)) {
               // TBD
             } else {
-              dbhandler.child("Treat Track").child(key).remove();
+              dbhandler.child("Water Track").child(key).remove();
             }
           });
         }
@@ -90,7 +93,7 @@ class WaterState extends State<Water> {
                 startLevel = currentVal;
                 startTime = time;
                 waterLevel = currentVal;
-                iWaterDrank = 0;
+                waterDrank = 0;
               });
             }
           }
@@ -116,8 +119,32 @@ class WaterState extends State<Water> {
     }
   }
 
-  void dogSettings(BuildContext context) {
-    final TextEditingController controller = TextEditingController();
+  // Future<void> addDogDetailsDb(int activity, int weight, int goal) async {
+  //   dbhandler.child('Dog Details').onValue.take(1).listen((event) async {
+  //     if (event.snapshot.value != null) {
+  //       Map<dynamic, dynamic>? data =
+  //           event.snapshot.value as Map<dynamic, dynamic>?;
+  //       if (data != null) {
+  //         await dbhandler.child("Dog Details").update({
+  //           "dog_activity": activity,
+  //           "dog_weight": weight,
+  //           "dog_goal": goal
+  //         });
+  //       }
+  //     } else {
+  //       // if no abilities added yet add new with worker_id
+  //       Map<String, dynamic> dogList = {
+  //         "dog_activity": activity,
+  //         "dog_weight": weight,
+  //         "dog_goal": goal
+  //       };
+  //       await dbhandler.child('Dog Details').push().set(dogList);
+  //     }
+  //   });
+  // }
+
+  void dogSettings(BuildContext context, Function(int, int, int) updateGoal) {
+    TextEditingController _controller = TextEditingController();
     showDialog<void>(
       context: context,
       builder: (BuildContext context) {
@@ -127,13 +154,13 @@ class WaterState extends State<Water> {
               title: const Text("Set Barry's Details"),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
-                children: [
+                children: <Widget>[
                   const SizedBox(height: 10),
-                  Text("Select Barry's Activity Level",
+                  const Text("Select Barry's Activity Level",
                       style: TextStyle(fontSize: 18)),
                   const SizedBox(height: 10),
                   RadioListTile(
-                    title: Text('Low', style: TextStyle(fontSize: 16)),
+                    title: const Text('Low', style: TextStyle(fontSize: 16)),
                     value: 40,
                     groupValue: activityLevel,
                     onChanged: (value) {
@@ -143,7 +170,8 @@ class WaterState extends State<Water> {
                     },
                   ),
                   RadioListTile(
-                    title: Text('Average', style: TextStyle(fontSize: 16)),
+                    title:
+                        const Text('Average', style: TextStyle(fontSize: 16)),
                     value: 50,
                     groupValue: activityLevel,
                     onChanged: (value) {
@@ -153,7 +181,7 @@ class WaterState extends State<Water> {
                     },
                   ),
                   RadioListTile(
-                    title: Text('High', style: TextStyle(fontSize: 16)),
+                    title: const Text('High', style: TextStyle(fontSize: 16)),
                     value: 60,
                     groupValue: activityLevel,
                     onChanged: (value) {
@@ -162,15 +190,21 @@ class WaterState extends State<Water> {
                       });
                     },
                   ),
-                  SizedBox(height: 20),
-                  Text("Input Barry's Weight", style: TextStyle(fontSize: 18)),
+                  const SizedBox(height: 20),
+                  const Text("Input Barry's Weight",
+                      style: TextStyle(fontSize: 18)),
                   const SizedBox(height: 10),
                   TextField(
-                      controller: controller,
-                      keyboardType: TextInputType.number,
-                      decoration: InputDecoration(
-                        labelText: 'Enter Barry\'s Weight in KG',
-                      )),
+                    controller: _controller,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Enter Barry\'s Weight in KG',
+                    ),
+                    onChanged: (value) {
+                      dogWeight = int.tryParse(value) ?? 15;
+                      print('Input value: $value');
+                    },
+                  ),
                 ],
               ),
               actions: [
@@ -182,12 +216,8 @@ class WaterState extends State<Water> {
                 ),
                 TextButton(
                   onPressed: () {
-                    setState(() {
-                      //TO DO ADD TO DB
-                      int parsedWeight = int.tryParse(controller.text) ?? 15;
-                      dogWeight = parsedWeight;
-                      waterGoal = dogWeight * activityLevel;
-                    });
+                    waterGoal = dogWeight * activityLevel;
+                    updateGoal(activityLevel, dogWeight, waterGoal);
                     Navigator.of(context).pop();
                   },
                   child: const Text('Submit'),
@@ -202,24 +232,16 @@ class WaterState extends State<Water> {
 
   @override
   Widget build(BuildContext context) {
-    String goal = waterGoal.toString();
-    String waterDrank = iWaterDrank.toString();
     return Scaffold(
         backgroundColor: const Color(0xffFCFAFC),
-        appBar: AppBar(
-          backgroundColor: const Color(0xffFCFAFC),
-          title: const Padding(
-            padding: EdgeInsets.only(top: 20),
-            child: Center(child: Text("Water")),
-          ),
-          automaticallyImplyLeading: false, // Remove the back button
-        ),
+        
         body: Center(
             child: SingleChildScrollView(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: <Widget>[
+              const SizedBox(height: 80),
               const Text(
                 "Today's Water Intake",
                 style: TextStyle(
@@ -227,7 +249,7 @@ class WaterState extends State<Water> {
                     fontWeight: FontWeight.bold,
                     color: Color(0xff01579B)),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 30),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
@@ -237,12 +259,12 @@ class WaterState extends State<Water> {
                     animationDuration: 1000,
                     radius: 90,
                     lineWidth: 20,
-                    percent: 0.8,
+                    percent: waterDrank / waterGoal,
                     progressColor: const Color(0xff01579B),
                     backgroundColor: const Color(0xff64b5f6),
                     circularStrokeCap: CircularStrokeCap.round,
                   ),
-                  const SizedBox(width: 20),
+                  const SizedBox(width: 30),
                   Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -262,7 +284,7 @@ class WaterState extends State<Water> {
                       ),
                       const SizedBox(height: 5),
                       Text(
-                        "Goal: ${goal}ml",
+                        "Goal: ${waterGoal}ml",
                         style: const TextStyle(
                             fontSize: 20, fontWeight: FontWeight.bold),
                         textAlign: TextAlign.right,
@@ -278,27 +300,70 @@ class WaterState extends State<Water> {
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 30),
               TextButton(
                 onPressed: () {
-                  dogSettings(context);
+                  dogSettings(context, (activity, weight, goal) {
+                    setState(() {
+                      activityLevel = activity;
+                      dogWeight = weight;
+                      waterGoal = goal;
+                    });
+                    print(activityLevel);
+                    print(dogWeight);
+                    print(waterGoal);
+                  });
                 },
                 child: const Text(
                   'Press to change water settings',
                   style: TextStyle(fontSize: 22, color: Color(0xff64b5f6)),
                 ),
               ),
+              const SizedBox(height: 60),
+              Container(
+                height: 5.0,
+                width: 400.0,
+                color: const Color(0xff01579B),
+              ),
+              const SizedBox(height: 60),
+              const Text(
+                "Bowl Water Level",
+                style: TextStyle(
+                    fontSize: 36,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xff01579B)),
+              ),
               const SizedBox(height: 20),
-              Text(dogWeight.toString()),
-              Text(activityLevel.toString()),
-
-              // Text(water),
-              // ElevatedButton(
-              //   onPressed: () {
-              //     currentWater(); // Call _togglePower function correctly
-              //   },
-              //   child: const Text('Water Check'),
-              // )
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: <Widget>[
+                  IconButton(onPressed: null, icon: Icon(Icons.local_drink_outlined, size: 80, color: Color(0xff64b5f6))),
+                  SizedBox(width: 20),
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                  Text(
+                    "Bowl Water Level",
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.right,
+                  ),
+                  SizedBox(height: 5),
+                  Text(
+                    "113ml",
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.right,
+                  ),
+                  SizedBox(height: 5),
+                  Text(
+                    "Satus: Ok",
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    textAlign: TextAlign.right,
+                  )]),
+                ],
+              ),
+              const SizedBox(height: 80),
             ],
           ),
         )));
